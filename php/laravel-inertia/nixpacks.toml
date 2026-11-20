@@ -17,6 +17,10 @@ cmd = '/assets/start.sh'
 "start.sh" = '''
 #!/bin/bash
 
+# Ensure storage and bootstrap cache are writable by www-data
+chown -R www-data:www-data /app/storage /app/bootstrap/cache
+chmod -R 775 /app/storage /app/bootstrap/cache
+
 # Transform the nginx configuration
 node /assets/scripts/prestart.mjs /assets/nginx.template.conf /etc/nginx.conf
 
@@ -73,11 +77,12 @@ stderr_logfile=/var/log/worker-phpfpm.log
 [program:worker-laravel]
 process_name=%(program_name)s_%(process_num)02d
 command=bash -c 'exec php /app/artisan queue:work --sleep=3 --tries=3 --max-time=3600'
+user=www-data
 autostart=true
 autorestart=true
 stopasgroup=true
 killasgroup=true
-numprocs=12
+numprocs=12 # To reduce memory/CPU usage, change to 2.
 startsecs=0
 stopwaitsecs=3600
 stdout_logfile=/var/log/worker-laravel.log
@@ -140,11 +145,10 @@ http {
         add_header X-Content-Type-Options "nosniff";
 
         client_max_body_size 35M;
-     
+
         index index.php;
-     
+
         charset utf-8;
-     
 
         $if(NIXPACKS_PHP_FALLBACK_PATH) (
             location / {
@@ -155,21 +159,22 @@ http {
                 try_files $uri $uri/ /index.php?$query_string;
            }
         )
-     
+
         location = /favicon.ico { access_log off; log_not_found off; }
         location = /robots.txt  { access_log off; log_not_found off; }
-     
+
         $if(IS_LARAVEL) (
             error_page 404 /index.php;
         ) else ()
-     
+
         location ~ \.php$ {
+            fastcgi_buffer_size 8k;
             fastcgi_pass 127.0.0.1:9000;
             fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
             include $!{nginx}/conf/fastcgi_params;
             include $!{nginx}/conf/fastcgi.conf;
         }
-     
+
         location ~ /\.(?!well-known).* {
             deny all;
         }
