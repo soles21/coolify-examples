@@ -1,13 +1,13 @@
 {
-    "listeners": {
-        "*:8000": {
-            "pass": "routes",
-            "forwarded": {
-                "protocol": "X-Forwarded-Proto",
-                "source": ["172.16.0.0/12"]
-            }
+   "listeners": {
+    "*:8000": {
+        "pass": "routes",
+        "forwarded": {
+            "protocol": "X-Forwarded-Proto",
+            "source": ["10.0.1.0/24", "fdb0:86cd:c68a::/64"]
         }
-    },
+    }
+},
     "routes": [
         {
             "match": {
